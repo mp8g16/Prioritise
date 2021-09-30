@@ -4,20 +4,29 @@ import json
 
 
 class Task:
-    def __init__(self, name="", description="", from_dict=None):
+    def __init__(self,
+                 name="",
+                 description="",
+                 state="Not Started",
+                 from_dict=None):
         
         if from_dict is None:
             assert isinstance(name, str)
             assert isinstance(description, str)
+            assert isinstance(state, str)
 
             self.name = name
             self.time = datetime.now().replace(microsecond=0)
             self.description = description
             self.order = None
-            self.state = None
+            self.state = state
         else:
-            self.dict.append(from_dict)
-     
+            self.name = from_dict["name"]
+            self.time = datetime.fromisoformat(from_dict["time"])
+            self.description = from_dict["description"]
+            self.order = from_dict["order"]
+            self.state = from_dict["state"]
+
     def __str__(self):
         return self.name
         
@@ -37,10 +46,10 @@ class Task:
         """less or equals"""
         return self.compare(other, {"l","s"})
 
-    def __eq__(self, other):
-        """less or equals"""
-        return self.compare(other, {"s"})
-        
+    #def __eq__(self, other):
+    #    """less or equals"""
+    #    return self.compare(other, {"s"})
+
     def __ne__(self, other):
         """less or equals"""
         return self.compare(other, {"l","g"})
@@ -77,58 +86,234 @@ class Task:
         
     def get_dict(self):
         return {"name": self.name,
-                "time": self.time,
-                "order": self.state,
-                "state": self.stated,
+                "time": self.time.isoformat(),
+                "order": self.order,
+                "state": self.state,
                 "description": self.description}
         
 class Prioritise:
     def __init__(self, file="data\\tasks.json"):
+        """
+        init
+        """
         self.file = file
+        self.commands = ["help", "add", "sort", "sort_all", 
+                         "list", "list_all", "show", "show_all",
+                         "task_numbers", "delete", "close"]
         if file is not None: self.load()
-    
-    def run():
-        ans = input("Prioritise Open\n").lower()
-        responses = {"help"     : help,
-                     "add"      : help,
-                     "sort"     : help,
-                     "list"     : help,
-                     "list_all" : help,
-                     "show"     : help,
-                     "size"     : help,
-                     "close"    :}
+   
+    def save(self):
+        """
+        init
+        """
+        data = json.dumps([item.get_dict() for item in self.tasks])
+        with open(self.file, 'w') as f:
+            f.write(data)
 
-    while responses.get(ans, self.invalid)():
+    def load(self):
+        """
+        init
+        """
+        try:
+            with open(self.file, 'r') as f:
+                data = f.read()
+        except:
+            self.tasks= []
+            self.save()
+            with open(self.file, 'r') as f:
+                data = f.read()
+
+        self.tasks = [Task(from_dict=item) for item in json.loads(data)]
     
+    def run(self):
+        """
+        Runs the prioritise command line application
+        """
+        ans = input("What can I do for you:\n    ").lower()
+        print()
+
+        while getattr(self, ["invalid", ans][ans in self.commands])():
+            ans = input("Is there anything else I can do?\n    ").lower()
+            print()
+
     def invalid(self):
-        print("I'm sorry, that input isn't a command I recognise."
+        """
+        This method is run when Prioritise does not recognise a command
+        """
+        print("I'm sorry, that input isn't a command I recognise. "
               "To see a list of commands, type help.")
         return True
             
     def help(self):
-        print("stand in")
+        """
+        Prioritise can sort a list of tasks based on user comparisons.
+        The following commands can be given to Prioritise:
+        """
+        
+        print("Prioritise understands the following commands")
+        for item in self.commands:
+            print(f"    {item}\t{getattr(self, item).__doc__}")
+
+        return True
         
     def add(self):
-        pass
+        """
+        Adds a new task to the task list given the name, description
+        and state specified by the user.
+        """
+        
+        task_params = {"name" : input("What is the task name?\n    "),
+                       "description" :input("\nTask description:\n    ")
+                      }
+        state_text = ("\nAdd a task state. The state may be: "
+                      "Not Started/In Progress/Complete/Frozen/"
+                      "Fossilised (ns/ip/co/fr/fo). "
+                      "For a description of what these states mean "
+                      "type explain (e)\n    ")
+        states = {"not started" : "Not Started",
+                  "in progress" : "In Progress",
+                  "complete"    : "Complete",
+                  "frozen"      : "Frozen",
+                  "Fossilised"  : "Fossilised",  
+                  "ns"          : "Not Started",
+                  "ip"          : "In Progress",
+                  "co"          : "Complete",
+                  "fr"          : "Frozen",
+                  "fo"          : "Fossilised"}
+        state_missing = True
+        
+        while state_missing:
+            state = input(state_text).lower()
+            if state in {"explain", "e"}:
+                print("\nNot written yet")
+            elif state in states:
+                task_params["state"] = states[state]
+                state_missing = False
+            else:
+                state_text = ("Sorry, I don't recognise that state."
+                              "Could you input either Not Started/"
+                              "In Progress/Complete/Frozen/Fossilised "
+                              "(ns/ip/co/fr/fo).\n    ")
+        
+        self.tasks.append(Task(**task_params))
+        self.save()
+        print("Task added\n")
 
-        def save(self):
-            pass
-
-        def load(self):
-            try:
-                with open(self.file, 'r') as f:
-                    cont = f.readlines()
-            except: 
-                open(self.file, "x").close()
-                self.items = []
-                
-            
-            param
+        return True
             
     def sort(self):
-        pass
+        """
+        Sorts the list of tasks which are Not Started or In Progress
+        based on user comparisons and the previous ordering. 
+        Once sorted, this method assigns a new
+        integer to the order variable for each task in the list
+        """
+        self.tasks.sort(reverse=True)
+        
+        for ind, val in enumerate(self.tasks):
+            val.order = ind
+
+        return True
     
-    def
+    def sort_all(self):
+        """
+        Sorts the list of tasks which are Not Started or In Progress
+        based only on user comparisons. Once sorted, this method assigns
+        a new integer to the order variable for each task in the list.
+        """
+        raise NotImplementedError
+
+        return True
+    
+    def list(self):
+        """
+        Prints a list of all the task names which are
+        not complete or fossilised
+        """
+        print("Current Tasks:")
+        for val in self.tasks:
+            if val.state not in {"Complete", "Fossilised"}:
+                print(f"    {val}")
+
+        return True
+    
+    def list_all(self):
+        """
+        Prints a list of all the task names
+        """
+        print("All Tasks:")
+        for val in self.tasks:
+            print(f"    {val}")
+        
+        return True
+    
+    def show(self):
+        """
+        After entering a specific task name, show will print all the
+        information associated with that task
+        """
+        raise NotImplementedError
+
+        return True
+        
+    def show_all(self):
+        """
+        Will print all the information associated with all tasks
+        """
+        print("Task Info:")
+        for val in self.tasks:
+            print("    " + "\n    ".join(repr(val).split('\n'))+"\n")
+
+        return True
+    
+    def task_numbers(self):
+        """
+        Will print the total number of tasks, as well as the number
+        of tasks with each assigned state.
+        """
+        
+        totals = {"Not Started" : 0,
+                  "In Progress" : 0,
+                  "Complete"    : 0,
+                  "Frozen"      : 0,
+                  "Fossilised"  : 0
+                  }
+        
+        for item in self.tasks: totals[item.state] += 1
+        
+        print("Totals:")
+        print(f"    Tasks       : {len(self.tasks)}")
+        print(f"    Not Started : {totals['Not Started']}")
+        print(f"    In Progress : {totals['In Progress']}")
+        print(f"    Complete    : {totals['Complete']}")
+        print(f"    Frozen      : {totals['Frozen']}")
+        print(f"    Fossilised  : {totals['Fossilised']}")
+        print()
+
+        return True
+    
+    def delete(self):
+        ans = input("Which item do you wish to delete?\n    ")
+
+        for item in self.tasks:
+            if ans == item.name: 
+                self.tasks.remove(item)
+                print(f"\nDeleted {ans}\n")
+                break
+        else:
+            print("\nI couldn't find any tasks with that name\n")
+            
+        return True
+        
+    
+    def close(self):
+        """
+        Will save the information stored in Prioritise and end
+        the command line function.
+        """
+
+        self.save()
+        return False
 
 if __name__ == "__main__":
     Prioritise().run()
