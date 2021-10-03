@@ -10,6 +10,8 @@ class Task:
                  state="Not Started",
                  from_dict=None):
         
+        self.lazy_sort = False
+        
         if from_dict is None:
             assert isinstance(name, str)
             assert isinstance(description, str)
@@ -90,16 +92,40 @@ class Task:
                 "order": self.order,
                 "state": self.state,
                 "description": self.description}
+                
+    def set_lazy_sort(val):
+        assert isinstance(val, bool)
+        self.lazy_sort = val
+
+class CommandManager:        
+        def __init__(self):
+            self.command_dict = {}
+            self.else_command = self.default_else_command
+
+        def add_command(self, mthd):
+            self.command_dict[mthd.__name__] = mthd
+            return mthd
+            
+        def add_else_command(self, mthd):
+            self.else_command = mthd
+            return mthd
+        
+        def default_else_command():
+            print("Command not recognised")
+            return True
+        
+        def get_command(self, name):
+            return self.command_dict.get(name, self.else_command)
         
 class Prioritise:
+    commands = CommandManager()
+
     def __init__(self, file="data\\tasks.json"):
         """
         init
         """
         self.file = file
-        self.commands = ["help", "add", "sort", "sort_all", 
-                         "list", "list_all", "show", "show_all",
-                         "task_numbers", "delete", "close"]
+
         if file is not None: self.load()
    
     def save(self):
@@ -132,10 +158,11 @@ class Prioritise:
         ans = input("What can I do for you:\n    ").lower()
         print()
 
-        while getattr(self, ["invalid", ans][ans in self.commands])():
+        while Prioritise.commands.get_command(ans)(self):
             ans = input("Is there anything else I can do?\n    ").lower()
             print()
 
+    @commands.add_else_command
     def invalid(self):
         """
         This method is run when Prioritise does not recognise a command
@@ -143,7 +170,8 @@ class Prioritise:
         print("I'm sorry, that input isn't a command I recognise. "
               "To see a list of commands, type help.")
         return True
-            
+    
+    @commands.add_command
     def help(self):
         """
         Prioritise can sort a list of tasks based on user comparisons.
@@ -151,11 +179,12 @@ class Prioritise:
         """
         
         print("Prioritise understands the following commands")
-        for item in self.commands:
-            print(f"    {item}\t{getattr(self, item).__doc__}")
+        for key, value in Prioritise.commands.command_dict.items():
+            print(f"    {key}\t{value.__doc__}")
 
         return True
         
+    @commands.add_command
     def add(self):
         """
         Adds a new task to the task list given the name, description
@@ -201,6 +230,7 @@ class Prioritise:
 
         return True
             
+    @commands.add_command
     def sort(self):
         """
         Sorts the list of tasks which are Not Started or In Progress
@@ -215,6 +245,7 @@ class Prioritise:
 
         return True
     
+    @commands.add_command
     def sort_all(self):
         """
         Sorts the list of tasks which are Not Started or In Progress
@@ -225,6 +256,7 @@ class Prioritise:
 
         return True
     
+    @commands.add_command
     def list(self):
         """
         Prints a list of all the task names which are
@@ -237,6 +269,7 @@ class Prioritise:
 
         return True
     
+    @commands.add_command
     def list_all(self):
         """
         Prints a list of all the task names
@@ -247,7 +280,8 @@ class Prioritise:
         
         return True
     
-    def show(self):
+    @commands.add_command
+    def show_task(self):
         """
         After entering a specific task name, show will print all the
         information associated with that task
@@ -255,8 +289,9 @@ class Prioritise:
         raise NotImplementedError
 
         return True
-        
-    def show_all(self):
+    
+    @commands.add_command
+    def show(self):
         """
         Will print all the information associated with all tasks
         """
@@ -266,6 +301,7 @@ class Prioritise:
 
         return True
     
+    @commands.add_command
     def task_numbers(self):
         """
         Will print the total number of tasks, as well as the number
@@ -292,7 +328,12 @@ class Prioritise:
 
         return True
     
+    @commands.add_command
     def delete(self):
+        """
+        deletes task
+        """
+
         ans = input("Which item do you wish to delete?\n    ")
 
         for item in self.tasks:
@@ -305,7 +346,7 @@ class Prioritise:
             
         return True
         
-    
+    @commands.add_command
     def close(self):
         """
         Will save the information stored in Prioritise and end
