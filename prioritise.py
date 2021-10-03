@@ -65,7 +65,32 @@ class Task:
         return self.compare(other, {"g","s"})
         
     def compare(self, other, true_vals):
-        ans = input(f"Is {self} of greater/same/less (g/s/l) importance than {other}?\n").lower()
+    
+        
+        state_order = {"Not Started" : 0,
+                       "In Progress" : 0,
+                       "Complete"    : 2,
+                       "Frozen"      : 1,
+                       "Fossilised"  : 2}
+        #compare states
+        s_val = state_order[self.state]
+        o_val = state_order[other.state]
+        if (s_val != 0 or o_val != 0):
+            if s_val < o_val: return "g" in true_vals
+            elif s_val > o_val: return "l" in true_vals
+            else: return "s" in true_vals
+                
+        #if lazy sort compare order values   
+        if (self.lazy_sort 
+            and  self.order is not None
+            and other.order is not None):
+
+            if self.order < other.order: return "g" in true_vals
+            elif self.order > other.order: return "l" in true_vals
+            else: return "s" in true_vals
+
+        #ask for user comparisonslist_aL
+        ans = input(f"Is {self} of greater/same/less (g/s/l) priority than {other}?\n").lower()
         result = {"g":"g",
                   "s":"s",
                   "l":"l",
@@ -93,7 +118,7 @@ class Task:
                 "state": self.state,
                 "description": self.description}
                 
-    def set_lazy_sort(val):
+    def set_lazy_sort(self, val):
         assert isinstance(val, bool)
         self.lazy_sort = val
 
@@ -238,10 +263,11 @@ class Prioritise:
         Once sorted, this method assigns a new
         integer to the order variable for each task in the list
         """
+        for task in self.tasks: task.set_lazy_sort(True)
         self.tasks.sort(reverse=True)
         
         for ind, val in enumerate(self.tasks):
-            val.order = ind
+            val.order = ind+1
 
         return True
     
@@ -252,7 +278,11 @@ class Prioritise:
         based only on user comparisons. Once sorted, this method assigns
         a new integer to the order variable for each task in the list.
         """
-        raise NotImplementedError
+        for task in self.tasks: task.set_lazy_sort(False)
+        self.tasks.sort(reverse=True)
+        
+        for ind, val in enumerate(self.tasks):
+            val.order = ind+1
 
         return True
     
@@ -300,6 +330,18 @@ class Prioritise:
             print("    " + "\n    ".join(repr(val).split('\n'))+"\n")
 
         return True
+        
+    @commands.add_command
+    def show_top(self):
+        """
+        Shows the three highest priority tasks which aren't completed,
+        fossilised or frozen
+        """
+        print("Task Info:")
+        for val in self.tasks[:3]:
+            print("    " + "\n    ".join(repr(val).split('\n'))+"\n")
+
+        return True
     
     @commands.add_command
     def task_numbers(self):
@@ -326,6 +368,38 @@ class Prioritise:
         print(f"    Fossilised  : {totals['Fossilised']}")
         print()
 
+        return True
+    
+    @commands.add_command
+    def edit(self):
+        """
+        edits parameters of a task
+        """
+        ans = input("Which item do you wish to edit?\n    ")
+
+        for item in self.tasks:
+            if ans == item.name: 
+                ans_2 = input("Which value do you wish to edit?\n    ")
+                if ans_2 in {"name", "description", "state"}:
+                    new_val =  input("Please input the new value\n    ")
+                    setattr(item, ans_2, new_val)
+                elif ans_2 == "order":
+                    new_val =  input("Please input an integer or "
+                                     "'none'\n    ")
+                    try:
+                        item.order = int(new_val)
+                    except: 
+                        if new_val.lower() == "none": 
+                            item.order = None
+                        else: 
+                            print("That is not a suitable value "
+                                  "for order")
+                    
+                else: print("I cannot modify that value of the task")
+                break
+        else:
+            print("\nI couldn't find any tasks with that name\n")
+        
         return True
     
     @commands.add_command
